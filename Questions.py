@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-import random
+import sys
 
 USER_DATA_FILE = "user_data.json"
 
@@ -15,6 +15,30 @@ def save_user_data(data):
     with open(USER_DATA_FILE, "w") as file:
         json.dump(data, file, indent=4)
 
+def display_welcome():
+    print("\n" + "="*50)
+    print("       Welcome to the Computer Science QCM")
+    print("="*50)
+
+def display_menu():
+    print("\n1. View History")
+    print("2. Start the QCM")
+    print("3. Exit")
+    print("\n" + "="*50)
+
+def show_history(user_data, name):
+    if not user_data[name]['history']:
+        print("\nNo history available.")
+        return
+    
+    print("\nYour Game History:")
+    print("="*80)
+    for session in user_data[name]['history']:
+        print(f"Date: {session['date']}")
+        print(f"Category: {session['category']}")
+        print(f"Score: {session['score']}/{session['total_questions']}")
+        print("-"*40)
+
 def display_question(question, options):
     print("\n" + "="*80)
     print(f"\n{question}\n")
@@ -23,13 +47,99 @@ def display_question(question, options):
     print("\n" + "="*80)
 
 def display_categories(categories):
-    print("\nAvailable Categories:")
+    print("\nAvailable categories:")
     print("="*80)
     for idx, category in enumerate(categories, 1):
         print(f"{idx}. {category}")
     print("="*80)
 
+def get_valid_category(quiz_content):
+    while True:
+        display_categories(quiz_content.keys())
+        try:
+            category_choice = int(input("\nSelect a category (number): "))
+            if 1 <= category_choice <= len(quiz_content):
+                return list(quiz_content.keys())[category_choice - 1]
+            print("Invalid selection. Please choose a valid number.")
+        except ValueError:
+            print("Please enter a valid number.")
 
+def get_answer():
+    while True:
+        guess = input('\nEnter your answer (A/B/C/D): ').upper()
+        if guess in ['A', 'B', 'C', 'D']:
+            return guess
+        print("Invalid input. Please enter A, B, C, or D.")
+
+def run_quiz(name, user_data, quiz_content):
+    selected_category = get_valid_category(quiz_content)
+    print(f"\nYou have selected: {selected_category}")
+
+    current_quiz = quiz_content[selected_category]
+    questions = current_quiz["questions"]
+    options = current_quiz["options"]
+    answers = current_quiz["answers"]
+
+    score = 0
+    for qstnumber, question in enumerate(questions):
+        display_question(question, options[qstnumber])
+        guess = get_answer()
+            
+        if guess == answers[qstnumber]:
+            score += 1
+            print('\n✓ CORRECT!')
+        else: 
+            print('\n✗ INCORRECT!')   
+            print(f'The correct answer is: {answers[qstnumber]}')
+
+    save_session(name, user_data, selected_category, score, len(questions))
+    display_results(selected_category, score, len(questions))
+
+def save_session(name, user_data, category, score, total_questions):
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    new_session = {
+        "date": current_datetime,
+        "category": category,
+        "score": score,
+        "total_questions": total_questions
+    }
+    user_data[name]['history'].append(new_session)
+    save_user_data(user_data)
+
+def display_results(category, score, total_questions):
+    print('\n' + "="*80)
+    print(f'\nCategory: {category}')
+    print(f'Final score: {score}/{total_questions}')
+    print(f'Session recorded on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+    print("\n" + "="*80)
+
+def main():
+    user_data = load_user_data()
+    
+    display_welcome()
+    name = input('\nPlease enter your name: ')
+    
+    if name not in user_data:
+        print(f"\nWelcome {name}! It's your first time.")
+        user_data[name] = {'history': []}
+    else:
+        print(f"\nWelcome back {name}!")
+
+    while True:
+        display_menu()
+        choice = input("\nEnter your choice (1-3): ")
+        
+        if choice == "1":
+            show_history(user_data, name)
+        elif choice == "2":
+            run_quiz(name, user_data, quiz_content)
+        elif choice == "3":
+            print("\nThank you for participating! Goodbye!")
+            sys.exit()
+        else:
+            print("\nInvalid choice. Please try again.")
+
+# Quiz content organized by categories
 quiz_content = {
     "Computer Basics": {
         "questions": [
@@ -221,83 +331,6 @@ quiz_content = {
         "answers": ["B", "A", "A", "A", "A", "B", "C", "A", "B", "C"]
     }
 }
+if __name__ == "__main__":
+    main()
 
-
-
-user_data = load_user_data()
-
-
-name = input('Please enter your name: ')
-
-
-if name in user_data:
-    print(f"\nWelcome back, {name}!")
-    print("\nYour playing history:")
-    for session in user_data[name]['history']:
-        print(f"Date: {session['date']}, Category: {session['category']}, Score: {session['score']}/{session['total_questions']}")
-    print("\nLet's play again!")
-else:
-    print(f"Welcome, {name}! This is your first time playing.")
-    user_data[name] = {'history': []}
-
-
-while True:
-    display_categories(quiz_content.keys())
-    try:
-        category_choice = int(input("\nSelect a category number: "))
-        if 1 <= category_choice <= len(quiz_content):
-            selected_category = list(quiz_content.keys())[category_choice - 1]
-            break
-        else:
-            print("Invalid selection. Please choose a valid number.")
-    except ValueError:
-        print("Please enter a valid number.")
-
-print(f"\nYou selected: {selected_category}")
-
-
-current_quiz = quiz_content[selected_category]
-questions = current_quiz["questions"]
-options = current_quiz["options"]
-answers = current_quiz["answers"]
-
-guesses = []
-score = 0
-qstnumber = 0
-
-for question in questions:
-    display_question(question, options[qstnumber])
-        
-    while True:
-        guess = input('\nEnter your answer (A/B/C/D): ').upper()
-        if guess in ['A', 'B', 'C', 'D']:
-            break
-        print("Invalid input. Please enter A, B, C, or D.")
-        
-    guesses.append(guess)
-    if guess == answers[qstnumber]:
-        score += 1
-        print('\n✓ CORRECT!')
-    else: 
-        print('\n✗ INCORRECT!')   
-        print(f'The correct answer is: {answers[qstnumber]}')
-              
-    qstnumber += 1
-
-current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-new_session = {
-    "date": current_datetime,
-    "category": selected_category,
-    "score": score,
-    "total_questions": len(questions)
-}
-user_data[name]['history'].append(new_session)
-save_user_data(user_data)
-
-
-print('\n' + "="*80)
-print(f'\nCategory: {selected_category}')
-print(f'Final Score: {score}/{len(questions)}')
-print(f'Session recorded on: {current_datetime}')
-print("\n" + "="*80)
